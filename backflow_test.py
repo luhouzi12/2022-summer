@@ -159,9 +159,20 @@ for stockCodeAlphaRawdict in TStockCodeAlphaRawDictList:
 dk5(TStockCodeAlphaRawDictList)
 for index in range(len(TStockCodeAlphaRawDictList)):
     TStockCodeAlphaRawDictList[index] = powrank(TStockCodeAlphaRawDictList[index])
-print(TStockCodeAlphaRawDictList)
-
-
+def calculateReturn(stockCodeAlphaDict, csvContent):
+    stockCodeReturnDict = {}
+    for stockCode in stockCodeAlphaDict.keys():
+        stockLineInCsvContent = csvContent[csvContent['S_INFO_WINDCODE:1'].isin([str(stockCode)])]
+        TReturn = stockLineInCsvContent.loc[stockLineInCsvContent.index[0]]['RETURNS:10']
+        stockCodeReturnDict[stockCode] = stockCodeAlphaDict[stockCode] * TReturn
+    return stockCodeReturnDict
+stockCodeReturnDictList = []
+for index in range(len(TStockCodeAlphaRawDictList)):
+    stockCodeReturnDictList.append(calculateReturn(TStockCodeAlphaRawDictList[index], readCsv(csvFilePathList[index + 6])))
+dailyReturnList = []
+for stockCodeReturnDict in stockCodeReturnDictList:
+    dailyReturnList.append(sum(stockCodeReturnDict.values()))
+print(dailyReturnList)
 
 # IR IC return rate huanshoulv BPMG bodonglv zuidahuiche
 # zhengti/fennian
