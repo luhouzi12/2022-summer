@@ -1,11 +1,11 @@
 import copy
 from datetime import date
 import pandas as pd
-import numpy as np
 import warnings
 import os
 warnings.filterwarnings("ignore") #狗狗
 basePath = r'C:\xyz\quote_test'
+# basePath = r'C:\Users\xyz\Desktop\202207\data\stock_quote\quote'
 stockCodeColumnIndex = 1
 preCloseColumnIndex = 2
 closeColumnIndex = 6
@@ -24,7 +24,6 @@ for index in industryContent.index:
     if industryCode not in industryCodeStockCodeListdict.keys():
         industryCodeStockCodeListdict[industryCode] = []
     industryCodeStockCodeListdict[industryCode].append(stockCode)
-print(industryCodeStockCodeListdict)
 
 def readCsv (fileName):
     return pd.read_csv(fileName)
@@ -53,7 +52,7 @@ def getAvailableStocks(csvContent):
                     resultCsvContent.drop(index=index,inplace=True)
     return resultCsvContent
     
-# basePath = r'C:\Users\xyz\Desktop\202207\data\stock_quote\quote'
+
 
 def generateAvailableCsvContentFilePathList():
     yearPathList = []
@@ -99,7 +98,6 @@ csvFilePathList = generateAvailableCsvContentFilePathList()
 TStockCodeAlphaRawDictList = []
 for csvFilePath in csvFilePathList:
     if csvFilePathList.index(csvFilePath) > 5:
-        # TDate = csvFilePath[]
         TCsvContent = readCsv(csvFilePath) # Today's CSV content
         availableTCsvContent = getAvailableStocks(TCsvContent) # filter out st stocks
         TStockCodeAlphaRawdict = {}
@@ -157,8 +155,10 @@ def powrank(stockCodeAlphaRawdict):
 for stockCodeAlphaRawdict in TStockCodeAlphaRawDictList:
     neu(stockCodeAlphaRawdict)
 dk5(TStockCodeAlphaRawDictList)
+
 for index in range(len(TStockCodeAlphaRawDictList)):
     TStockCodeAlphaRawDictList[index] = powrank(TStockCodeAlphaRawDictList[index])
+
 def calculateReturn(stockCodeAlphaDict, csvContent):
     stockCodeReturnDict = {}
     for stockCode in stockCodeAlphaDict.keys():
@@ -166,9 +166,11 @@ def calculateReturn(stockCodeAlphaDict, csvContent):
         TReturn = stockLineInCsvContent.loc[stockLineInCsvContent.index[0]]['RETURNS:10']
         stockCodeReturnDict[stockCode] = stockCodeAlphaDict[stockCode] * TReturn
     return stockCodeReturnDict
+
 stockCodeReturnDictList = []
 for index in range(len(TStockCodeAlphaRawDictList)):
     stockCodeReturnDictList.append(calculateReturn(TStockCodeAlphaRawDictList[index], readCsv(csvFilePathList[index + 6])))
+
 dailyReturnList = []
 for stockCodeReturnDict in stockCodeReturnDictList:
     sumReturn = 0
@@ -178,9 +180,9 @@ for stockCodeReturnDict in stockCodeReturnDictList:
     dailyReturnList.append(sumReturn)
 print(dailyReturnList)
 
+drawDown = max(dailyReturnList) - min(dailyReturnList)
+totalReturn = sum(dailyReturnList)
+print('draw down: ' + str(drawDown))
+print('total return: ' + str(totalReturn))
 # IR IC return rate huanshoulv BPMG bodonglv zuidahuiche
 # zhengti/fennian
-
-# TCsv = readCsv(r'C:\Users\xyz\Desktop\202207\data\stock_quote\quote\2022\01\quote_20220112.csv')
-
-# print(TCsv)
