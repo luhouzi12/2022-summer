@@ -171,7 +171,11 @@ for index in range(len(TStockCodeAlphaRawDictList)):
     stockCodeReturnDictList.append(calculateReturn(TStockCodeAlphaRawDictList[index], readCsv(csvFilePathList[index + 6])))
 dailyReturnList = []
 for stockCodeReturnDict in stockCodeReturnDictList:
-    dailyReturnList.append(sum(stockCodeReturnDict.values()))
+    sumReturn = 0
+    for returnValue in stockCodeReturnDict.values():
+        if returnValue == returnValue:
+            sumReturn = sumReturn + returnValue
+    dailyReturnList.append(sumReturn)
 print(dailyReturnList)
 
 # IR IC return rate huanshoulv BPMG bodonglv zuidahuiche
