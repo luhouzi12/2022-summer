@@ -9,6 +9,7 @@ basePath = r'C:\xyz\quote_test'
 stockCodeColumnIndex = 1
 preCloseColumnIndex = 2
 closeColumnIndex = 6
+returnColumnIndex = 10
 
 stContent = pd.read_csv(r'C:\xyz\st.csv')
 industryContent = pd.read_csv(r'C:\xyz\zx_industry.csv')
@@ -37,6 +38,11 @@ def convertStringToDate(dateNumber):
     day = int(dateString[6:8])
     return date(year, month, day)
 
+def convertDictValueToRank(inputDict):
+    sortedDict = dict(sorted(inputDict.items(), key=lambda item: item[1]))
+    for key in sortedDict.keys():
+        sortedDict[key] = sortedDict.keys().index(key)
+    return sortedDict
 
 def getAvailableStocks(csvContent):
     resultCsvContent = copy.deepcopy(csvContent)
@@ -75,42 +81,47 @@ def generateAvailableCsvContentFilePathList():
             resultCsvPathList.remove(csvPath)
     return resultCsvPathList
 
-def generate5dr(csvFilePathList):
-    for csvFilePath in csvFilePathList:
-        if csvFilePathList.index(csvFilePath) > 5:
-            TCsvContent = readCsv(csvFilePath) # Today's CSV content
-            availableTCsvContent = getAvailableStocks(TCsvContent) # filter out st stocks
-            TStockCodeAlphaRawDict = {}
-            TM5CsvFilePath = csvFilePathList[csvFilePathList.index(csvFilePath) - 5]
-            TM5CsvContent = readCsv(TM5CsvFilePath) # T-5 's CSV Content
-            for index in availableTCsvContent.index: # loop today's available stocks
-                stockCode = availableTCsvContent.loc[index][stockCodeColumnIndex]
-                stockTClose = availableTCsvContent.loc[index][closeColumnIndex] # close
-                # f.loc[df['column_name'] == some_value]
-                stockLinesInTM5 = TM5CsvContent[TM5CsvContent['S_INFO_WINDCODE:1'].isin([str(stockCode)])]
-                if len(stockLinesInTM5):
-                    TM5Close = stockLinesInTM5.loc[stockLinesInTM5.index[0]]['S_DQ_CLOSE:6']
-                    TStockCodeAlphaRawDict[stockCode] = stockTClose - TM5Close
-            TStockCodeAlphaRawDictList.append(TStockCodeAlphaRawDict)
-    return
+# def generate5dr(csvFilePathList):
+#     for csvFilePath in csvFilePathList:
+#         if csvFilePathList.index(csvFilePath) > 5:
+#             TCsvContent = readCsv(csvFilePath) # Today's CSV content
+#             availableTCsvContent = getAvailableStocks(TCsvContent) # filter out st stocks
+#             TStockCodeAlphaRawDict = {}
+#             TM5CsvFilePath = csvFilePathList[csvFilePathList.index(csvFilePath) - 5]
+#             TM5CsvContent = readCsv(TM5CsvFilePath) # T-5 's CSV Content
+#             for index in availableTCsvContent.index: # loop today's available stocks
+#                 stockCode = availableTCsvContent.loc[index][stockCodeColumnIndex]
+#                 stockTClose = availableTCsvContent.loc[index][closeColumnIndex] # close
+#                 # f.loc[df['column_name'] == some_value]
+#                 stockLinesInTM5 = TM5CsvContent[TM5CsvContent['S_INFO_WINDCODE:1'].isin([str(stockCode)])]
+#                 if len(stockLinesInTM5):
+#                     TM5Close = stockLinesInTM5.loc[stockLinesInTM5.index[0]]['S_DQ_CLOSE:6']
+#                     TStockCodeAlphaRawDict[stockCode] = stockTClose - TM5Close
+#             TStockCodeAlphaRawDictList.append(TStockCodeAlphaRawDict)
+#     return
 
 csvFilePathList = generateAvailableCsvContentFilePathList()
 TStockCodeAlphaRawDictList = []
+TStockCodeReturnDictList = []
 for csvFilePath in csvFilePathList:
     if csvFilePathList.index(csvFilePath) > 5:
         TCsvContent = readCsv(csvFilePath) # Today's CSV content
         availableTCsvContent = getAvailableStocks(TCsvContent) # filter out st stocks
         TStockCodeAlphaRawdict = {}
+        TStockCodeReturnDict = {}
         TM5CsvFilePath = csvFilePathList[csvFilePathList.index(csvFilePath) - 5]
         TM5CsvContent = readCsv(TM5CsvFilePath) # T-5 's CSV Content
         for index in availableTCsvContent.index: # loop today's available stocks
             stockCode = availableTCsvContent.loc[index][stockCodeColumnIndex]
             stockTClose = availableTCsvContent.loc[index][closeColumnIndex] # close
+            stockTReturn = availableTCsvContent.loc[index][returnColumnIndex]
+            TStockCodeReturnDict[stockCode] = stockTReturn
             stockLinesInTM5 = TM5CsvContent[TM5CsvContent['S_INFO_WINDCODE:1'].isin([str(stockCode)])]
             if len(stockLinesInTM5):
                 TM5Close = stockLinesInTM5.loc[stockLinesInTM5.index[0]]['S_DQ_CLOSE:6']
                 TStockCodeAlphaRawdict[stockCode] = stockTClose - TM5Close
         TStockCodeAlphaRawDictList.append(TStockCodeAlphaRawdict)
+        TStockCodeReturnDictList.append(TStockCodeReturnDict)
 
 def neu(stockCodeAlphaRawdict):
     for industryCode in industryCodeStockCodeListdict.keys():
@@ -154,22 +165,23 @@ def powrank(stockCodeAlphaRawdict):
 
 for stockCodeAlphaRawdict in TStockCodeAlphaRawDictList:
     neu(stockCodeAlphaRawdict)
+
 dk5(TStockCodeAlphaRawDictList)
 
 for index in range(len(TStockCodeAlphaRawDictList)):
     TStockCodeAlphaRawDictList[index] = powrank(TStockCodeAlphaRawDictList[index])
 
-def calculateReturn(stockCodeAlphaDict, csvContent):
-    stockCodeReturnDict = {}
+def calculateReturn(stockCodeAlphaDict, stockCodeReturnDict):
+    result = {}
     for stockCode in stockCodeAlphaDict.keys():
-        stockLineInCsvContent = csvContent[csvContent['S_INFO_WINDCODE:1'].isin([str(stockCode)])]
-        TReturn = stockLineInCsvContent.loc[stockLineInCsvContent.index[0]]['RETURNS:10']
-        stockCodeReturnDict[stockCode] = stockCodeAlphaDict[stockCode] * TReturn
-    return stockCodeReturnDict
+        returnValue = stockCodeReturnDict[stockCode]
+        if returnValue == returnValue:
+            result[stockCode] = stockCodeAlphaDict[stockCode] * returnValue
+    return result
 
 stockCodeReturnDictList = []
 for index in range(len(TStockCodeAlphaRawDictList)):
-    stockCodeReturnDictList.append(calculateReturn(TStockCodeAlphaRawDictList[index], readCsv(csvFilePathList[index + 6])))
+    stockCodeReturnDictList.append(calculateReturn(TStockCodeAlphaRawDictList[index], TStockCodeReturnDictList[index]))
 
 dailyReturnList = []
 for stockCodeReturnDict in stockCodeReturnDictList:
@@ -182,7 +194,21 @@ print(dailyReturnList)
 
 drawDown = max(dailyReturnList) - min(dailyReturnList)
 totalReturn = sum(dailyReturnList)
+def calculateRankIC(stockCodeAlphaDict, stockCodeReturnDict):
+    rankedStockCodeAlphaDict = convertDictValueToRank(stockCodeAlphaDict)
+    rankedstockCodeReturnDict = convertDictValueToRank(stockCodeReturnDict)
+    data = [rankedStockCodeAlphaDict, rankedstockCodeReturnDict]
+    df = pd.DataFrame(data)
+    ic = df.corr().loc[0][1]
+    return ic
+ICList = []
+for index in range(len(TStockCodeAlphaRawDictList)):
+    ICList.append(calculateRankIC(TStockCodeAlphaRawDictList[index], TStockCodeReturnDictList[pd.Int64Index]))
+
+
+
 print('draw down: ' + str(drawDown))
 print('total return: ' + str(totalReturn))
+print('ICList: ' + str(ICList))
 # IR IC return rate huanshoulv BPMG bodonglv zuidahuiche
 # zhengti/fennian
