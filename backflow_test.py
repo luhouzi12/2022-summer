@@ -1,5 +1,6 @@
 import copy
 from datetime import date
+import numpy
 import pandas as pd
 import warnings
 import os
@@ -41,7 +42,11 @@ def convertStringToDate(dateNumber):
 def convertDictValueToRank(inputDict):
     sortedDict = dict(sorted(inputDict.items(), key=lambda item: item[1]))
     for key in sortedDict.keys():
-        sortedDict[key] = sortedDict.keys().index(key)
+        if sortedDict[key] != sortedDict[key]:
+            print(key)
+            sortedDict.pop(key)
+    for key in sortedDict.keys():
+        sortedDict[key] = list(sortedDict.keys()).index(key)
     return sortedDict
 
 def getAvailableStocks(csvContent):
@@ -119,7 +124,8 @@ for csvFilePath in csvFilePathList:
             stockLinesInTM5 = TM5CsvContent[TM5CsvContent['S_INFO_WINDCODE:1'].isin([str(stockCode)])]
             if len(stockLinesInTM5):
                 TM5Close = stockLinesInTM5.loc[stockLinesInTM5.index[0]]['S_DQ_CLOSE:6']
-                TStockCodeAlphaRawdict[stockCode] = stockTClose - TM5Close
+                if stockTClose - TM5Close == stockTClose - TM5Close:
+                    TStockCodeAlphaRawdict[stockCode] = stockTClose - TM5Close
         TStockCodeAlphaRawDictList.append(TStockCodeAlphaRawdict)
         TStockCodeReturnDictList.append(TStockCodeReturnDict)
 
@@ -159,8 +165,9 @@ def powrank(stockCodeAlphaRawdict):
     for stockCode in sortedDict.keys():
         sortedDict[stockCode] = sortedDict[stockCode] / maxAbsAlpha
     avgAlpha = sum(sortedDict.values()) / len(sortedDict)
+    stdAlpha = numpy.std(list(sortedDict.values()))
     for stockCode in sortedDict.keys():
-        sortedDict[stockCode] = sortedDict[stockCode] - avgAlpha
+        sortedDict[stockCode] = (sortedDict[stockCode] - avgAlpha) / stdAlpha
     return sortedDict
 
 for stockCodeAlphaRawdict in TStockCodeAlphaRawDictList:
@@ -170,6 +177,7 @@ dk5(TStockCodeAlphaRawDictList)
 
 for index in range(len(TStockCodeAlphaRawDictList)):
     TStockCodeAlphaRawDictList[index] = powrank(TStockCodeAlphaRawDictList[index])
+
 
 def calculateReturn(stockCodeAlphaDict, stockCodeReturnDict):
     result = {}
@@ -202,13 +210,35 @@ def calculateRankIC(stockCodeAlphaDict, stockCodeReturnDict):
     ic = df.corr().loc[0][1]
     return ic
 ICList = []
-for index in range(len(TStockCodeAlphaRawDictList)):
-    ICList.append(calculateRankIC(TStockCodeAlphaRawDictList[index], TStockCodeReturnDictList[pd.Int64Index]))
+for index in range(len(TStockCodeAlphaRawDictList) - 1):
+    ICList.append(calculateRankIC(TStockCodeAlphaRawDictList[index], TStockCodeReturnDictList[index + 1]))
+def calculateIR(icList):
+    return (sum(icList) / len(icList)) / numpy.std(icList)
+IR = calculateIR(ICList)
 
+def calculteTakeoverRate(stockCodeAlphaRawdictList):
+    takeoverRateList =[]
+    for stockCodeAlphaRawdict in stockCodeAlphaRawdictList:
+        TIndex = stockCodeAlphaRawdictList.index(stockCodeAlphaRawdict)
+
+        if TIndex >= 1:
+            theDayBeforeTAlphaRawDict = stockCodeAlphaRawdictList[TIndex - 1]
+            stockCodeTakeoverDict = {}
+            for stockCode in stockCodeAlphaRawdict.keys():
+                if stockCode in theDayBeforeTAlphaRawDict.keys():
+                    takeOver = abs(stockCodeAlphaRawdict[stockCode] - theDayBeforeTAlphaRawDict[stockCode])
+                    stockCodeTakeoverDict[stockCode] = takeOver
+            takeoverRate = sum(list(stockCodeTakeoverDict.values())) / len(stockCodeTakeoverDict)  
+            takeoverRateList.append(takeoverRate)
+    return takeoverRateList
+
+takeoverRate  = calculteTakeoverRate(TStockCodeAlphaRawDictList)
 
 
 print('draw down: ' + str(drawDown))
 print('total return: ' + str(totalReturn))
 print('ICList: ' + str(ICList))
+print('IR: ' + str(IR))
+print('TVR: ' + str(takeoverRate))
 # IR IC return rate huanshoulv BPMG bodonglv zuidahuiche
 # zhengti/fennian
